@@ -15,6 +15,7 @@ const createCourseSchema = z.object({
 const updateCourseSchema = createCourseSchema.partial();
 
 const courseQuerySchema = z.object({
+  courseCode: z.string().min(1).max(100).optional(),
   status: z.enum(courseStatuses).optional(),
 });
 

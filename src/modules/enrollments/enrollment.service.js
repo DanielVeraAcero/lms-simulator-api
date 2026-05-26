@@ -37,15 +37,35 @@ async function ensureUserAndCourseAreValid(userId, courseId) {
   }
 }
 
+async function resolveCourseId(courseId, courseCode) {
+  if (courseId) {
+    return courseId;
+  }
+
+  const courseResult = await query(
+    `select id from lms_courses where course_code = $1`,
+    [courseCode],
+  );
+
+  const course = courseResult.rows[0];
+
+  if (!course) {
+    throw new AppError(404, "Course not found");
+  }
+
+  return course.id;
+}
+
 async function createEnrollment(payload) {
-  await ensureUserAndCourseAreValid(payload.userId, payload.courseId);
+  const resolvedCourseId = await resolveCourseId(payload.courseId, payload.courseCode);
+  await ensureUserAndCourseAreValid(payload.userId, resolvedCourseId);
 
   const existing = await query(
     `
       select * from lms_enrollments
       where user_id = $1 and course_id = $2
     `,
-    [payload.userId, payload.courseId],
+    [payload.userId, resolvedCourseId],
   );
 
   if (existing.rows[0]) {
@@ -60,7 +80,7 @@ async function createEnrollment(payload) {
       `,
       [
         payload.userId,
-        payload.courseId,
+        resolvedCourseId,
         payload.status,
         JSON.stringify(payload.metadata ?? {}),
       ],
@@ -86,7 +106,7 @@ async function createEnrollment(payload) {
     `,
     [
       payload.userId,
-      payload.courseId,
+      resolvedCourseId,
       payload.status,
       JSON.stringify(payload.metadata ?? {}),
     ],
@@ -101,6 +121,12 @@ async function createEnrollment(payload) {
 }
 
 async function listEnrollments(filters) {
+  let resolvedCourseId = filters.courseId;
+
+  if (!resolvedCourseId && filters.courseCode) {
+    resolvedCourseId = await resolveCourseId(null, filters.courseCode);
+  }
+
   const values = [];
   const where = [];
 
@@ -109,8 +135,8 @@ async function listEnrollments(filters) {
     where.push(`user_id = $${values.length}`);
   }
 
-  if (filters.courseId) {
-    values.push(filters.courseId);
+  if (resolvedCourseId) {
+    values.push(resolvedCourseId);
     where.push(`course_id = $${values.length}`);
   }
 

@@ -4,6 +4,8 @@ const LMS_BASE_URL = process.env.LMS_BASE_URL;
 const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
 const HUBSPOT_ENROLLMENT_OBJECT_TYPE =
   process.env.HUBSPOT_ENROLLMENT_OBJECT_TYPE || "2-63145867";
+const HUBSPOT_COURSE_OBJECT_TYPE =
+  process.env.HUBSPOT_COURSE_OBJECT_TYPE || "0-410";
 
 const lmsHeaders = {
   "Content-Type": "application/json"
@@ -30,23 +32,25 @@ const hubspotClient = axios.create({
 
 exports.main = async (event, callback) => {
   const input = event.inputFields || {};
-
-  const contactId = input.contact_id;
-  const enrollmentId = input.enrollment_id;
-  const email = normalizeEmail(input.email);
-  const firstName = input.firstname;
-  const lastName = input.lastname;
-  const lmsCourseId = input.lms_course_id;
-  const existingLmsUserId = input.lms_user_id;
+  const enrollmentId = String(input.enrollment_id || "").trim();
+  let resolvedContext = null;
 
   try {
-    validateRequiredInput({ contactId, enrollmentId, email, lmsCourseId });
+    validateRequiredInput({ enrollmentId });
 
-    const user = existingLmsUserId
-      ? { id: existingLmsUserId }
-      : await findOrCreateLmsUser({ email, firstName, lastName });
+    const context = await loadEnrollmentContext(enrollmentId);
+    resolvedContext = context;
+    validateEnrollmentContext(context);
 
-    await updateHubSpotContact(contactId, {
+    const user = context.existingLmsUserId
+      ? { id: context.existingLmsUserId }
+      : await findOrCreateLmsUser({
+          email: context.email,
+          firstName: context.firstName,
+          lastName: context.lastName
+        });
+
+    await updateHubSpotContact(context.contactId, {
       lms_user_id: user.id,
       lms_sync_status: "Pending",
       last_lms_sync_at: new Date().toISOString(),
@@ -55,7 +59,7 @@ exports.main = async (event, callback) => {
 
     const enrollment = await findOrCreateLmsEnrollment({
       lmsUserId: user.id,
-      lmsCourseId
+      lmsCourseCode: context.lmsCourseCode
     });
 
     await updateHubSpotEnrollment(enrollmentId, {
@@ -66,7 +70,7 @@ exports.main = async (event, callback) => {
       last_error: ""
     });
 
-    await updateHubSpotContact(contactId, {
+    await updateHubSpotContact(context.contactId, {
       lms_user_id: user.id,
       lms_sync_status: "Synced",
       last_lms_sync_at: new Date().toISOString(),
@@ -87,17 +91,24 @@ exports.main = async (event, callback) => {
       ? "Needs Review"
       : "Error";
 
-    if (contactId) {
-      await safeUpdateHubSpotContact(contactId, {
+    const safeContactId = resolvedContext
+      ? resolvedContext.contactId
+      : String(input.contact_id || "").trim();
+    const safeEnrollmentId = String(input.enrollment_id || "").trim();
+    const retryCount = incrementRetryCount(
+      resolvedContext ? resolvedContext.retryCount : input.retry_count
+    );
+
+    if (safeContactId) {
+      await safeUpdateHubSpotContact(safeContactId, {
         lms_sync_status: reviewStatus,
         last_lms_sync_at: new Date().toISOString(),
         last_lms_sync_error: errorMessage
       });
     }
 
-    if (enrollmentId) {
-      const retryCount = incrementRetryCount(input.retry_count);
-      await safeUpdateHubSpotEnrollment(enrollmentId, {
+    if (safeEnrollmentId) {
+      await safeUpdateHubSpotEnrollment(safeEnrollmentId, {
         sync_status: reviewStatus,
         last_attempt_at: new Date().toISOString(),
         retry_count: retryCount,
@@ -108,7 +119,7 @@ exports.main = async (event, callback) => {
     callback({
       outputFields: {
         success: false,
-        lms_user_id: existingLmsUserId || "",
+        lms_user_id: "",
         lms_enrollment_id: "",
         error_message: errorMessage
       }
@@ -116,18 +127,124 @@ exports.main = async (event, callback) => {
   }
 };
 
-function validateRequiredInput({ contactId, enrollmentId, email, lmsCourseId }) {
-  if (!contactId) throw needsReview("Missing HubSpot contact ID.");
-  if (!enrollmentId) throw needsReview("Missing HubSpot enrollment ID.");
-  if (!email) throw needsReview("Missing student email.");
-  if (!lmsCourseId) throw needsReview("Missing LMS course ID.");
+function validateRequiredInput({ enrollmentId }) {
+  if (!enrollmentId) {
+    throw needsReview("Missing HubSpot enrollment ID.");
+  }
+}
+
+async function loadEnrollmentContext(enrollmentId) {
+  const enrollmentRecord = await getHubSpotRecord(
+    HUBSPOT_ENROLLMENT_OBJECT_TYPE,
+    enrollmentId,
+    ["retry_count", "sync_status", "enrollment_name"]
+  );
+
+  const contactId = await getSingleAssociationId(
+    HUBSPOT_ENROLLMENT_OBJECT_TYPE,
+    enrollmentId,
+    "0-1",
+    "contact"
+  );
+
+  const courseId = await getSingleAssociationId(
+    HUBSPOT_ENROLLMENT_OBJECT_TYPE,
+    enrollmentId,
+    HUBSPOT_COURSE_OBJECT_TYPE,
+    "course"
+  );
+
+  const contactRecord = await getHubSpotRecord(
+    "contacts",
+    contactId,
+    ["email", "firstname", "lastname", "lms_user_id", "user_type"]
+  );
+
+  const courseRecord = await getHubSpotRecord(
+    HUBSPOT_COURSE_OBJECT_TYPE,
+    courseId,
+    ["lms_course_id", "course_active", "course_code", "hs_course_name"]
+  );
+
+  return {
+    enrollmentId,
+    contactId,
+    courseId,
+    email: normalizeEmail(contactRecord.properties.email),
+    firstName: normalizeOptional(contactRecord.properties.firstname),
+    lastName: normalizeOptional(contactRecord.properties.lastname),
+    existingLmsUserId: normalizeOptional(contactRecord.properties.lms_user_id),
+    userType: normalizeOptional(contactRecord.properties.user_type),
+    lmsCourseCode:
+      normalizeOptional(courseRecord.properties.lms_course_id) ||
+      normalizeOptional(courseRecord.properties.course_code),
+    courseActive: normalizeOptional(courseRecord.properties.course_active),
+    retryCount: enrollmentRecord.properties.retry_count
+  };
+}
+
+function validateEnrollmentContext(context) {
+  if (!context.contactId) {
+    throw needsReview("Enrollment is missing an associated contact.");
+  }
+
+  if (!context.courseId) {
+    throw needsReview("Enrollment is missing an associated course.");
+  }
+
+  if (!context.email) {
+    throw needsReview("Missing student email.");
+  }
+
+  if (!context.lmsCourseCode) {
+    throw needsReview("Missing LMS course ID.");
+  }
+
+  const normalizedUserType = context.userType.toLowerCase();
+  if (normalizedUserType && normalizedUserType !== "student") {
+    throw needsReview(`Associated contact is not a student. user_type=${context.userType}`);
+  }
+
+  if (context.courseActive.toLowerCase() === "false") {
+    throw needsReview("Associated course is inactive.");
+  }
+}
+
+async function getHubSpotRecord(objectType, recordId, properties) {
+  const response = await hubspotClient.get(`/crm/v3/objects/${objectType}/${recordId}`, {
+    params: {
+      properties: properties.join(",")
+    }
+  });
+
+  return response.data;
+}
+
+async function getSingleAssociationId(fromObjectType, fromRecordId, toObjectType, label) {
+  const response = await hubspotClient.get(
+    `/crm/v4/objects/${fromObjectType}/${fromRecordId}/associations/${toObjectType}`
+  );
+
+  const results = response.data.results || [];
+
+  if (!results.length) {
+    throw needsReview(`Enrollment is missing an associated ${label}.`);
+  }
+
+  if (results.length > 1) {
+    throw needsReview(`Enrollment has multiple associated ${label} records.`);
+  }
+
+  return String(results[0].toObjectId);
 }
 
 async function findOrCreateLmsUser({ email, firstName, lastName }) {
   const existingUser = await findLmsUserByEmail(email);
-  if (existingUser) return existingUser;
+  if (existingUser) {
+    return existingUser;
+  }
 
-  const response = await lmsClient.post("/users", {
+  const response = await lmsClient.post("/api/users", {
     email,
     firstName: firstName || "Unknown",
     lastName: lastName || "Unknown",
@@ -139,7 +256,7 @@ async function findOrCreateLmsUser({ email, firstName, lastName }) {
 }
 
 async function findLmsUserByEmail(email) {
-  const response = await lmsClient.get("/users", {
+  const response = await lmsClient.get("/api/users", {
     params: { email }
   });
 
@@ -151,24 +268,26 @@ async function findLmsUserByEmail(email) {
   return users[0] || null;
 }
 
-async function findOrCreateLmsEnrollment({ lmsUserId, lmsCourseId }) {
-  const existingEnrollment = await findLmsEnrollment({ lmsUserId, lmsCourseId });
-  if (existingEnrollment) return existingEnrollment;
+async function findOrCreateLmsEnrollment({ lmsUserId, lmsCourseCode }) {
+  const existingEnrollment = await findLmsEnrollment({ lmsUserId, lmsCourseCode });
+  if (existingEnrollment) {
+    return existingEnrollment;
+  }
 
-  const response = await lmsClient.post("/enrollments", {
+  const response = await lmsClient.post("/api/enrollments", {
     userId: lmsUserId,
-    courseId: lmsCourseId,
+    courseCode: lmsCourseCode,
     status: "active"
   });
 
   return unwrapRecord(response, "enrollment");
 }
 
-async function findLmsEnrollment({ lmsUserId, lmsCourseId }) {
-  const response = await lmsClient.get("/enrollments", {
+async function findLmsEnrollment({ lmsUserId, lmsCourseCode }) {
+  const response = await lmsClient.get("/api/enrollments", {
     params: {
       userId: lmsUserId,
-      courseId: lmsCourseId
+      courseCode: lmsCourseCode
     }
   });
 
@@ -206,6 +325,10 @@ async function safeUpdateHubSpotEnrollment(enrollmentId, properties) {
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
+}
+
+function normalizeOptional(value) {
+  return String(value || "").trim();
 }
 
 function incrementRetryCount(retryCount) {

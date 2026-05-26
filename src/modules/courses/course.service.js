@@ -51,6 +51,11 @@ async function listCourses(filters) {
   const values = [];
   const where = [];
 
+  if (filters.courseCode) {
+    values.push(filters.courseCode);
+    where.push(`course_code = $${values.length}`);
+  }
+
   if (filters.status) {
     values.push(filters.status);
     where.push(`status = $${values.length}`);

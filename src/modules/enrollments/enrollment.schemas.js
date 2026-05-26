@@ -6,9 +6,13 @@ const enrollmentStatuses = ["active", "completed", "cancelled"];
 
 const createEnrollmentSchema = z.object({
   userId: z.string().uuid(),
-  courseId: z.string().uuid(),
+  courseId: z.string().uuid().optional(),
+  courseCode: z.string().min(1).max(100).optional(),
   status: z.enum(enrollmentStatuses).default("active"),
   metadata: metadataSchema,
+}).refine((value) => value.courseId || value.courseCode, {
+  message: "Either courseId or courseCode is required",
+  path: ["courseId"],
 });
 
 const updateEnrollmentSchema = z.object({
@@ -20,6 +24,7 @@ const updateEnrollmentSchema = z.object({
 const enrollmentQuerySchema = z.object({
   userId: z.string().uuid().optional(),
   courseId: z.string().uuid().optional(),
+  courseCode: z.string().min(1).max(100).optional(),
   status: z.enum(enrollmentStatuses).optional(),
 });
 
