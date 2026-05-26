@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: lms-simulator-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTO_RUN_SCHEMA
+        value: "true"

@@ -1,0 +1,5 @@
+Enrollment key,Enrollment name,Sync Status,Retry Count,Last Error,Contact email,Course code
+ana.gomez@example.com|ENG-101,Ana Gomez - English 101,Pending,0,,ana.gomez@example.com,ENG-101
+carlos.rojas@example.com|LEGAL-201,Carlos Rojas - Legal Writing 201,Pending,0,,carlos.rojas@example.com,LEGAL-201
+laura.martinez@example.com|ETHICS-110,Laura Martinez - Professional Ethics 110,Pending,0,,laura.martinez@example.com,ETHICS-110
+mariana.perez@example.com|IMM-301,Mariana Perez - Immigration Practice 301,Pending,0,,mariana.perez@example.com,IMM-301

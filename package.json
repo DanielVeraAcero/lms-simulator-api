@@ -1,0 +1,33 @@
+{
+  "name": "lms-simulator",
+  "version": "1.0.0",
+  "description": "Simple LMS simulator backend backed by Supabase Postgres.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "check": "node --check src/server.js"
+  },
+  "keywords": [
+    "express",
+    "supabase",
+    "lms",
+    "simulation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "pg": "^8.16.3",
+    "pino": "^9.7.0",
+    "pino-http": "^10.5.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "pino-pretty": "^13.1.1"
+  }
+}
