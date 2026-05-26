@@ -18,6 +18,7 @@ const createUserSchema = z.object({
 const updateUserSchema = createUserSchema.partial();
 
 const userQuerySchema = z.object({
+  email: z.string().email().optional(),
   status: z.enum(userStatuses).optional(),
   contactType: z.enum(contactTypes).optional(),
 });

@@ -1,16 +1,22 @@
 const axios = require("axios");
 
 const LMS_BASE_URL = process.env.LMS_BASE_URL;
-const LMS_API_KEY = process.env.LMS_API_KEY;
 const HUBSPOT_ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN;
+const HUBSPOT_ENROLLMENT_OBJECT_TYPE =
+  process.env.HUBSPOT_ENROLLMENT_OBJECT_TYPE || "2-63145867";
+
+const lmsHeaders = {
+  "Content-Type": "application/json"
+};
+
+if (process.env.LMS_API_KEY) {
+  lmsHeaders.Authorization = `Bearer ${process.env.LMS_API_KEY}`;
+}
 
 const lmsClient = axios.create({
   baseURL: LMS_BASE_URL,
   timeout: 10000,
-  headers: {
-    Authorization: `Bearer ${LMS_API_KEY}`,
-    "Content-Type": "application/json"
-  }
+  headers: lmsHeaders
 });
 
 const hubspotClient = axios.create({
@@ -43,6 +49,7 @@ exports.main = async (event, callback) => {
     await updateHubSpotContact(contactId, {
       lms_user_id: user.id,
       lms_sync_status: "Pending",
+      last_lms_sync_at: new Date().toISOString(),
       last_lms_sync_error: ""
     });
 
@@ -55,7 +62,15 @@ exports.main = async (event, callback) => {
       lms_enrollment_id: enrollment.id,
       sync_status: "Synced",
       last_attempt_at: new Date().toISOString(),
+      retry_count: 0,
       last_error: ""
+    });
+
+    await updateHubSpotContact(contactId, {
+      lms_user_id: user.id,
+      lms_sync_status: "Synced",
+      last_lms_sync_at: new Date().toISOString(),
+      last_lms_sync_error: ""
     });
 
     callback({
@@ -75,14 +90,17 @@ exports.main = async (event, callback) => {
     if (contactId) {
       await safeUpdateHubSpotContact(contactId, {
         lms_sync_status: reviewStatus,
+        last_lms_sync_at: new Date().toISOString(),
         last_lms_sync_error: errorMessage
       });
     }
 
     if (enrollmentId) {
+      const retryCount = incrementRetryCount(input.retry_count);
       await safeUpdateHubSpotEnrollment(enrollmentId, {
         sync_status: reviewStatus,
         last_attempt_at: new Date().toISOString(),
+        retry_count: retryCount,
         last_error: errorMessage
       });
     }
@@ -111,12 +129,13 @@ async function findOrCreateLmsUser({ email, firstName, lastName }) {
 
   const response = await lmsClient.post("/users", {
     email,
-    first_name: firstName || "",
-    last_name: lastName || "",
+    firstName: firstName || "Unknown",
+    lastName: lastName || "Unknown",
+    contactType: "student",
     status: "active"
   });
 
-  return response.data;
+  return unwrapRecord(response, "user");
 }
 
 async function findLmsUserByEmail(email) {
@@ -124,7 +143,7 @@ async function findLmsUserByEmail(email) {
     params: { email }
   });
 
-  const users = response.data.users || [];
+  const users = unwrapCollection(response, "users");
   if (users.length > 1) {
     throw needsReview(`Multiple LMS users found for email ${email}.`);
   }
@@ -137,23 +156,23 @@ async function findOrCreateLmsEnrollment({ lmsUserId, lmsCourseId }) {
   if (existingEnrollment) return existingEnrollment;
 
   const response = await lmsClient.post("/enrollments", {
-    user_id: lmsUserId,
-    course_id: lmsCourseId,
+    userId: lmsUserId,
+    courseId: lmsCourseId,
     status: "active"
   });
 
-  return response.data;
+  return unwrapRecord(response, "enrollment");
 }
 
 async function findLmsEnrollment({ lmsUserId, lmsCourseId }) {
   const response = await lmsClient.get("/enrollments", {
     params: {
-      user_id: lmsUserId,
-      course_id: lmsCourseId
+      userId: lmsUserId,
+      courseId: lmsCourseId
     }
   });
 
-  const enrollments = response.data.enrollments || [];
+  const enrollments = unwrapCollection(response, "enrollments");
   return enrollments[0] || null;
 }
 
@@ -164,7 +183,7 @@ async function updateHubSpotContact(contactId, properties) {
 }
 
 async function updateHubSpotEnrollment(enrollmentId, properties) {
-  await hubspotClient.patch(`/crm/v3/objects/enrollments/${enrollmentId}`, {
+  await hubspotClient.patch(`/crm/v3/objects/${HUBSPOT_ENROLLMENT_OBJECT_TYPE}/${enrollmentId}`, {
     properties
   });
 }
@@ -189,6 +208,11 @@ function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
+function incrementRetryCount(retryCount) {
+  const current = Number(retryCount || 0);
+  return Number.isFinite(current) ? current + 1 : 1;
+}
+
 function needsReview(message) {
   const error = new Error(message);
   error.needsReview = true;
@@ -207,4 +231,36 @@ function formatError(error) {
   }
 
   return error.message || "Unknown sync error.";
+}
+
+function unwrapCollection(response, label) {
+  const payload = response.data || {};
+
+  if (Array.isArray(payload.data)) {
+    return payload.data;
+  }
+
+  if (Array.isArray(payload.results)) {
+    return payload.results;
+  }
+
+  if (Array.isArray(payload[label])) {
+    return payload[label];
+  }
+
+  return [];
+}
+
+function unwrapRecord(response, label) {
+  const payload = response.data || {};
+
+  if (payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)) {
+    return payload.data;
+  }
+
+  if (payload[label] && typeof payload[label] === "object" && !Array.isArray(payload[label])) {
+    return payload[label];
+  }
+
+  return payload;
 }

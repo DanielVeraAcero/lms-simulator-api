@@ -55,6 +55,11 @@ async function listUsers(filters) {
   const conditions = [];
   const values = [];
 
+  if (filters.email) {
+    values.push(filters.email.toLowerCase());
+    conditions.push(`lower(email) = $${values.length}`);
+  }
+
   if (filters.status) {
     values.push(filters.status);
     conditions.push(`status = $${values.length}`);
