@@ -79,7 +79,7 @@ The custom code action should:
 8. Save the LMS enrollment ID and mark the Enrollment as `Synced`.
 9. Return success or failure outputs to the workflow.
 
-I included a sample implementation in [custom-code-action.js](./custom-code-action.js).
+I included a sample implementation in [hubspot-custom-code-action.js](./hubspot-custom-code-action.js).
 
 ### Welcome Email
 
