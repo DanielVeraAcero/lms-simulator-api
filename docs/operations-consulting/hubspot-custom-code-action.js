@@ -6,6 +6,13 @@ const HUBSPOT_ENROLLMENT_OBJECT_TYPE =
   process.env.HUBSPOT_ENROLLMENT_OBJECT_TYPE || "2-63145867";
 const HUBSPOT_COURSE_OBJECT_TYPE =
   process.env.HUBSPOT_COURSE_OBJECT_TYPE || "0-410";
+const HUBSPOT_ENROLLMENT_SYNC_STATUS = {
+  pending: "true",
+  synced: "false",
+  error: "Error",
+  needsReview: "Needs Review",
+  needsResync: "Needs Resync"
+};
 
 const lmsHeaders = {
   "Content-Type": "application/json"
@@ -64,7 +71,7 @@ exports.main = async (event, callback) => {
 
     await updateHubSpotEnrollment(enrollmentId, {
       lms_enrollment_id: enrollment.id,
-      sync_status: "Synced",
+      sync_status: HUBSPOT_ENROLLMENT_SYNC_STATUS.synced,
       last_attempt_at: new Date().toISOString(),
       retry_count: 0,
       last_error: ""
@@ -88,8 +95,8 @@ exports.main = async (event, callback) => {
   } catch (error) {
     const errorMessage = formatError(error);
     const reviewStatus = isNeedsReviewError(error)
-      ? "Needs Review"
-      : "Error";
+      ? HUBSPOT_ENROLLMENT_SYNC_STATUS.needsReview
+      : HUBSPOT_ENROLLMENT_SYNC_STATUS.error;
 
     const safeContactId = resolvedContext
       ? resolvedContext.contactId
