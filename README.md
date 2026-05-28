@@ -9,6 +9,7 @@ Backend sencillo en `Node.js + Express` para simular un LMS con persistencia en 
 - Gestión de matrículas (`enrollments`)
 - Auditoría básica de eventos
 - Validación de entrada y manejo centralizado de errores
+- Dashboard web para demostrar la sincronización visualmente
 
 ## Requisitos
 
@@ -47,6 +48,8 @@ npm start
 ## Endpoints principales
 
 - `GET /health`
+- `GET /dashboard`
+- `GET /api/dashboard`
 - `POST /api/users`
 - `GET /api/users`
 - `GET /api/users/:userId`
@@ -65,6 +68,11 @@ npm start
 - `GET /api/audit-logs`
 
 ## Ejemplo rápido
+
+Abrir dashboard:
+
+- Local: `http://localhost:3000/dashboard`
+- Render: `https://lms-simulator-api.onrender.com/dashboard`
 
 Crear usuario:
 

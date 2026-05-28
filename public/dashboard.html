@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LMS Simulator Dashboard</title>
+    <link rel="stylesheet" href="/assets/dashboard.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">HubSpot sync preview</p>
+          <h1>LMS Simulator</h1>
+          <p class="hero-copy">
+            Vista ejecutiva para confirmar usuarios, cursos y matriculas creadas desde HubSpot.
+          </p>
+        </div>
+        <div class="health-card" aria-live="polite">
+          <span class="health-dot"></span>
+          <div>
+            <span class="label">API status</span>
+            <strong id="health-status">Checking...</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Resumen LMS">
+        <article class="metric">
+          <span>Usuarios</span>
+          <strong id="metric-users">0</strong>
+        </article>
+        <article class="metric">
+          <span>Cursos</span>
+          <strong id="metric-courses">0</strong>
+        </article>
+        <article class="metric">
+          <span>Matriculas</span>
+          <strong id="metric-enrollments">0</strong>
+        </article>
+        <article class="metric">
+          <span>Activas</span>
+          <strong id="metric-active-enrollments">0</strong>
+        </article>
+      </section>
+
+      <section class="panel main-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Sincronizacion reciente</p>
+            <h2>Matriculas</h2>
+          </div>
+          <button class="icon-button" id="refresh-button" type="button" title="Actualizar">
+            <span aria-hidden="true">R</span>
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Curso</th>
+                <th>Estado</th>
+                <th>Creado</th>
+              </tr>
+            </thead>
+            <tbody id="enrollments-table"></tbody>
+          </table>
+        </div>
+        <p class="empty-state" id="enrollments-empty" hidden>
+          Todavia no hay matriculas sincronizadas. Cuando HubSpot cree una, aparecera aqui.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Catalogo</p>
+              <h2>Cursos</h2>
+            </div>
+          </div>
+          <div class="course-list" id="courses-list"></div>
+          <p class="empty-state" id="courses-empty" hidden>No hay cursos creados.</p>
+        </article>
+
+        <article class="panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Contactos LMS</p>
+              <h2>Usuarios recientes</h2>
+            </div>
+          </div>
+          <div class="user-list" id="users-list"></div>
+          <p class="empty-state" id="users-empty" hidden>No hay usuarios creados.</p>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Trazabilidad</p>
+            <h2>Actividad reciente</h2>
+          </div>
+        </div>
+        <ol class="timeline" id="audit-list"></ol>
+        <p class="empty-state" id="audit-empty" hidden>No hay eventos de auditoria todavia.</p>
+      </section>
+    </main>
+
+    <script src="/assets/dashboard.js"></script>
+  </body>
+</html>
