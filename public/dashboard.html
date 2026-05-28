@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,7 +13,7 @@
           <p class="eyebrow">HubSpot sync preview</p>
           <h1>LMS Simulator</h1>
           <p class="hero-copy">
-            Vista ejecutiva para confirmar usuarios, cursos y matriculas creadas desde HubSpot.
+            Executive view to confirm users, courses, and enrollments created from HubSpot.
           </p>
         </div>
         <div class="health-card" aria-live="polite">
@@ -25,21 +25,21 @@
         </div>
       </section>
 
-      <section class="metrics" aria-label="Resumen LMS">
+      <section class="metrics" aria-label="LMS summary">
         <article class="metric">
-          <span>Usuarios</span>
+          <span>Users</span>
           <strong id="metric-users">0</strong>
         </article>
         <article class="metric">
-          <span>Cursos</span>
+          <span>Courses</span>
           <strong id="metric-courses">0</strong>
         </article>
         <article class="metric">
-          <span>Matriculas</span>
+          <span>Enrollments</span>
           <strong id="metric-enrollments">0</strong>
         </article>
         <article class="metric">
-          <span>Activas</span>
+          <span>Active</span>
           <strong id="metric-active-enrollments">0</strong>
         </article>
       </section>
@@ -47,10 +47,10 @@
       <section class="panel main-panel">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Sincronizacion reciente</p>
-            <h2>Matriculas</h2>
+            <p class="eyebrow">Recent sync activity</p>
+            <h2>Enrollments</h2>
           </div>
-          <button class="icon-button" id="refresh-button" type="button" title="Actualizar">
+          <button class="icon-button" id="refresh-button" type="button" title="Refresh">
             <span aria-hidden="true">R</span>
           </button>
         </div>
@@ -58,18 +58,18 @@
           <table>
             <thead>
               <tr>
-                <th>Usuario</th>
+                <th>User</th>
                 <th>Email</th>
-                <th>Curso</th>
-                <th>Estado</th>
-                <th>Creado</th>
+                <th>Course</th>
+                <th>Status</th>
+                <th>Created</th>
               </tr>
             </thead>
             <tbody id="enrollments-table"></tbody>
           </table>
         </div>
         <p class="empty-state" id="enrollments-empty" hidden>
-          Todavia no hay matriculas sincronizadas. Cuando HubSpot cree una, aparecera aqui.
+          There are no synced enrollments yet. When HubSpot creates one, it will appear here.
         </p>
       </section>
 
@@ -77,35 +77,35 @@
         <article class="panel">
           <div class="section-heading compact">
             <div>
-              <p class="eyebrow">Catalogo</p>
-              <h2>Cursos</h2>
+              <p class="eyebrow">Catalog</p>
+              <h2>Courses</h2>
             </div>
           </div>
           <div class="course-list" id="courses-list"></div>
-          <p class="empty-state" id="courses-empty" hidden>No hay cursos creados.</p>
+          <p class="empty-state" id="courses-empty" hidden>No courses have been created yet.</p>
         </article>
 
         <article class="panel">
           <div class="section-heading compact">
             <div>
-              <p class="eyebrow">Contactos LMS</p>
-              <h2>Usuarios recientes</h2>
+              <p class="eyebrow">LMS contacts</p>
+              <h2>Recent users</h2>
             </div>
           </div>
           <div class="user-list" id="users-list"></div>
-          <p class="empty-state" id="users-empty" hidden>No hay usuarios creados.</p>
+          <p class="empty-state" id="users-empty" hidden>No users have been created yet.</p>
         </article>
       </section>
 
       <section class="panel">
         <div class="section-heading compact">
           <div>
-            <p class="eyebrow">Trazabilidad</p>
-            <h2>Actividad reciente</h2>
+            <p class="eyebrow">Traceability</p>
+            <h2>Recent activity</h2>
           </div>
         </div>
         <ol class="timeline" id="audit-list"></ol>
-        <p class="empty-state" id="audit-empty" hidden>No hay eventos de auditoria todavia.</p>
+        <p class="empty-state" id="audit-empty" hidden>No audit events yet.</p>
       </section>
     </main>
 

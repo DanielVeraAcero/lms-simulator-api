@@ -1,5 +1,5 @@
 const state = {
-  formatter: new Intl.DateTimeFormat("es-CO", {
+  formatter: new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   }),
@@ -31,7 +31,7 @@ function formatDate(value) {
 }
 
 function setMetric(id, value) {
-  byId(id).textContent = Number(value || 0).toLocaleString("es-CO");
+  byId(id).textContent = Number(value || 0).toLocaleString("en-US");
 }
 
 function badge(value) {
@@ -119,7 +119,7 @@ function renderUsers(users) {
           </div>
           <div class="count">
             ${user.enrollmentCount}
-            <span>cursos</span>
+            <span>courses</span>
           </div>
         </div>
       `,
@@ -203,3 +203,5 @@ loadDashboard().catch((error) => {
   renderEmptyDashboard();
   setHealth(false, "Error");
 });
+
+
