@@ -37,6 +37,8 @@ const hubspotClient = axios.create({
   }
 });
 
+// Sync an Enrollment by resolving its associated Contact and Course,
+// then ensuring both the LMS user and LMS enrollment exist.
 exports.main = async (event, callback) => {
   const input = event.inputFields || {};
   const enrollmentId = String(input.enrollment_id || "").trim();
@@ -141,6 +143,7 @@ function validateRequiredInput({ enrollmentId }) {
 }
 
 async function loadEnrollmentContext(enrollmentId) {
+  // Read the Enrollment first so we can reuse retry metadata and validate the record.
   const enrollmentRecord = await getHubSpotRecord(
     HUBSPOT_ENROLLMENT_OBJECT_TYPE,
     enrollmentId,
@@ -173,6 +176,7 @@ async function loadEnrollmentContext(enrollmentId) {
     ["lms_course_id", "course_active", "course_code", "hs_course_name"]
   );
 
+  // Prefer the dedicated LMS course ID, but fall back to the course code if needed.
   return {
     enrollmentId,
     contactId,
@@ -251,6 +255,7 @@ async function findOrCreateLmsUser({ email, firstName, lastName }) {
     return existingUser;
   }
 
+  // Create the LMS user only when no email match exists.
   const response = await lmsClient.post("/api/users", {
     email,
     firstName: firstName || "Unknown",
@@ -281,6 +286,7 @@ async function findOrCreateLmsEnrollment({ lmsUserId, lmsCourseCode }) {
     return existingEnrollment;
   }
 
+  // Create the LMS enrollment only when the user/course pair is not already enrolled.
   const response = await lmsClient.post("/api/enrollments", {
     userId: lmsUserId,
     courseCode: lmsCourseCode,
